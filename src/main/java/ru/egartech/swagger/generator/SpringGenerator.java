@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.languages.AbstractJavaCodegen;
 import org.openapitools.codegen.languages.features.BeanValidationFeatures;
@@ -19,6 +20,7 @@ import org.openapitools.codegen.templating.mustache.TrimWhitespaceLambda;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 
 
@@ -30,12 +32,9 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     private static final String USE_DTO = "useDto";
 
     protected String servicePackage = "ru.egartech.service";
-
     protected boolean useBeanValidation = true;
     protected boolean useDto = false;
-
     protected boolean useLombokAnnotation = true;
-
 
     @Override
     public CodegenType getTag() {
@@ -48,7 +47,6 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
 
     public SpringGenerator() {
         super();
-
         outputFolder = "generated-code/javaSpring";
         apiPackage = "ru.egartech.swagger";
         modelPackage = "ru.egartech.swagger.model";
@@ -63,61 +61,46 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
         apiNameSuffix = "";
         apiTemplateFiles.put("apiController.mustache", "Controller.java");
         apiTemplateFiles.put("apiService.mustache", "Service.java");
-
-        cliOptions
-                .add(CliOption.newBoolean(USE_DTO, "Use suffix \"Dto\" in model name", useDto));
-
+        cliOptions.add(CliOption.newBoolean(USE_DTO, "Use suffix \"Dto\" in model name", useDto));
     }
 
     @Override
     public OperationsMap postProcessOperationsWithModels(OperationsMap objs, List<ModelMap> allModels) {
         final OperationMap operations = objs.getOperations();
-        if (operations != null) {
+        Optional.ofNullable(operations).ifPresent(o -> {
             final List<CodegenOperation> ops = operations.getOperation();
             for (final CodegenOperation operation : ops) {
-
                 final List<CodegenResponse> responses = operation.responses;
-                if (responses != null) {
-
+                Optional.ofNullable(responses).ifPresent(r -> {
                     for (final CodegenResponse resp : responses) {
-                        if ("0".equals(resp.code)) {
-                            resp.code = "200";
-                        }
+                        resp.code = "0".equals(resp.code) ? String.valueOf(HttpStatus.SC_OK) : resp.code;
                         doDataTypeAssignment(resp.dataType, new DataTypeAssigner() {
                             @Override
                             public void setReturnType(String returnType) {
                                 resp.dataType = returnType;
                             }
-
                             @Override
                             public void setReturnContainer(String returnContainer) {
                                 resp.containerType = returnContainer;
                             }
                         });
                     }
-                }
-
-
+                });
                 doDataTypeAssignment(operation.returnType, new DataTypeAssigner() {
                     @Override
                     public void setReturnType(String returnType) {
                         operation.returnType = returnType;
                     }
-
                     @Override
                     public void setReturnContainer(String returnContainer) {
                         operation.returnContainer = returnContainer;
-
                     }
                 });
-
                 handleImplicitHeaders(operation);
             }
-
             objs.put("tagDescription", ops.get(0).tags.get(0).getDescription());
-        }
+        });
         return objs;
-        //return super.postProcessOperationsWithModels(objs, allModels);
     }
 
     @Override
@@ -127,10 +110,8 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
 
     private interface DataTypeAssigner {
         void setReturnType(String returnType);
-
         void setReturnContainer(String returnContainer);
     }
-
 
     @Override
     public void processOpts() {

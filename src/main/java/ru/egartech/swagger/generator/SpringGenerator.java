@@ -30,20 +30,12 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     private static final String CONTROLLER = "controller";
     private static final String SERVICE = "service";
     private static final String USE_DTO = "useDto";
+    private static final String DATE_TIME_FORMAT = "DateTimeFormat";
 
     protected String servicePackage = "ru.egartech.service";
     protected boolean useBeanValidation = true;
     protected boolean useDto = false;
     protected boolean useLombokAnnotation = true;
-
-    @Override
-    public CodegenType getTag() {
-        return CodegenType.SERVER;
-    }
-
-    public String getName() {
-        return "spring-codegen";
-    }
 
     public SpringGenerator() {
         super();
@@ -57,7 +49,7 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
         additionalProperties.put(SERVICE, SERVICE);
         additionalProperties.put(JACKSON, "true");
         additionalProperties.put(LOMBOK, useLombokAnnotation);
-        additionalProperties.put("useDto", false);
+        additionalProperties.put(USE_DTO, false);
         apiNameSuffix = "";
         apiTemplateFiles.put("apiController.mustache", "Controller.java");
         apiTemplateFiles.put("apiService.mustache", "Service.java");
@@ -104,37 +96,22 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     }
 
     @Override
-    public void setUseBeanValidation(boolean useBeanValidation) {
-        this.useBeanValidation = useBeanValidation;
-    }
-
-    private interface DataTypeAssigner {
-        void setReturnType(String returnType);
-        void setReturnContainer(String returnContainer);
-    }
-
-    @Override
     public void processOpts() {
         super.processOpts();
         apiTemplateFiles.remove("api.mustache");
         modelDocTemplateFiles.remove("model_doc.mustache");
         apiDocTemplateFiles.remove("api_doc.mustache");
         apiTestTemplateFiles.remove("api_test.mustache");
-        importMapping.put("DateTimeFormat", "org.springframework.format.annotation.DateTimeFormat");
+        importMapping.put(DATE_TIME_FORMAT, "org.springframework.format.annotation.DateTimeFormat");
         importMapping.put("ApiIgnore", "springfox.documentation.annotations.ApiIgnore");
-
         setDateLibrary("java8");
-
         if (additionalProperties.containsKey(USE_BEANVALIDATION)) {
             this.setUseBeanValidation(convertPropertyToBoolean(USE_BEANVALIDATION));
         }
-
         if (additionalProperties.containsKey(USE_DTO)) {
             this.setUseDto(convertPropertyToBoolean(USE_DTO));
         }
-
         writePropertyBack(USE_BEANVALIDATION, useBeanValidation);
-
         // add lambda for mustache templates
         additionalProperties.put("lambdaRemoveDoubleQuote", (Mustache.Lambda) (fragment, writer) -> writer
                 .write(fragment.execute().replaceAll("\"", Matcher.quoteReplacement(""))));
@@ -142,11 +119,8 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
                 .write(fragment.execute().replaceAll("\"", Matcher.quoteReplacement("\\\""))));
         additionalProperties.put("lambdaRemoveLineBreak",
                 (Mustache.Lambda) (fragment, writer) -> writer.write(fragment.execute().replaceAll("\\r|\\n", "")));
-
         additionalProperties.put("lambdaTrimWhitespace", new TrimWhitespaceLambda());
-
         additionalProperties.put("lambdaSplitString", new SplitStringLambda());
-
         additionalProperties.put("lambdaCapitalize", (Mustache.Lambda) (fragment, writer) -> writer.write(fragment.execute().substring(0,1).toUpperCase() +
                 fragment.execute().toLowerCase().substring(1)) );
     }
@@ -154,30 +128,24 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     @Override
     public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
         CodegenOperation codegenOperation = super.fromOperation(path, httpMethod, operation, servers);
-
         codegenOperation.allParams.stream().filter(p -> p.isDate || p.isDateTime).findFirst()
-                .ifPresent(p -> codegenOperation.imports.add("DateTimeFormat"));
-
+                .ifPresent(p -> codegenOperation.imports.add(DATE_TIME_FORMAT));
         return super.fromOperation(path, httpMethod, operation, servers);
     }
 
     @Override
     public void postProcessModelProperty(CodegenModel model, CodegenProperty property) {
         super.postProcessModelProperty(model, property);
-
         // add org.springframework.format.annotation.DateTimeFormat when needed
         if (property.isDate || property.isDateTime) {
-            model.imports.add("DateTimeFormat");
+            model.imports.add(DATE_TIME_FORMAT);
         }
-
         if ("null".equals(property.example)) {
             property.example = null;
         }
-
         // Add imports for Jackson
         if (!Boolean.TRUE.equals(model.isEnum)) {
             model.imports.add("JsonProperty");
-
             if (Boolean.TRUE.equals(model.hasEnums)) {
                 model.imports.add("JsonValue");
             }
@@ -187,25 +155,19 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
                 model.imports.add("JsonCreator");
             }
         }
-
         // Add imports for java.util.Arrays
         if (property.isByteArray) {
             model.imports.add("Arrays");
         }
-
         if (model.getVendorExtensions().containsKey("x-jackson-optional-nullable-helpers")) {
             model.imports.add("Arrays");
         }
-
     }
 
     @Override
     public String toModelName(String name) {
         super.toModelName(name);
-        if(useDto){
-            return name + "Dto";
-        }
-        return name;
+        return useDto ? name + "Dto" : name;
     }
 
     @Override
@@ -227,8 +189,27 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
         }
     }
 
+    @Override
+    public CodegenType getTag() {
+        return CodegenType.SERVER;
+    }
+
+    @Override
+    public String getName() {
+        return "spring-codegen";
+    }
+
+    @Override
+    public void setUseBeanValidation(boolean useBeanValidation) {
+        this.useBeanValidation = useBeanValidation;
+    }
+
+    public void setUseDto(boolean useDto) {
+        this.useDto = useDto;
+    }
+
     private void moveFile(File file, String folderName)  {
-        String target = file.getParentFile().getPath() + File.separator + folderName + File.separator + file.toPath().getFileName().toString();
+        String target = String.join(File.separator, file.getParentFile().getPath(), folderName, file.toPath().getFileName().toString());
         try {
             FileUtils.moveFile(file, FileUtils.getFile(target));
         } catch (IOException e) {
@@ -264,7 +245,8 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
         }
     }
 
-    public void setUseDto(boolean useDto) {
-        this.useDto = useDto;
+    private interface DataTypeAssigner {
+        void setReturnType(String returnType);
+        void setReturnContainer(String returnContainer);
     }
 }

@@ -60,8 +60,6 @@ public interface {{classname}}Service {
      */
 
     {{#responseWrapper}}{{.}}<{{/responseWrapper}}{{>returnTypes}}{{#responseWrapper}}>{{/responseWrapper}} {{operationId}}({{>serviceParam}}){{#unhandledException}} throws Exception{{/unhandledException}};
-    //----------------------------------------------------------------------------
-
 {{/operation}}
 }
 {{/operations}}

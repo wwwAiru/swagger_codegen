@@ -118,7 +118,7 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
         additionalProperties.put("lambdaEscapeDoubleQuote", (Mustache.Lambda) (fragment, writer) -> writer
                 .write(fragment.execute().replaceAll("\"", Matcher.quoteReplacement("\\\""))));
         additionalProperties.put("lambdaRemoveLineBreak",
-                (Mustache.Lambda) (fragment, writer) -> writer.write(fragment.execute().replaceAll("\\r|\\n", "")));
+                (Mustache.Lambda) (fragment, writer) -> writer.write(fragment.execute().replaceAll("[\\r|\\n]", "")));
         additionalProperties.put("lambdaTrimWhitespace", new TrimWhitespaceLambda());
         additionalProperties.put("lambdaSplitString", new SplitStringLambda());
         additionalProperties.put("lambdaCapitalize", (Mustache.Lambda) (fragment, writer) -> writer.write(fragment.execute().substring(0,1).toUpperCase() +
@@ -128,7 +128,9 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     @Override
     public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
         CodegenOperation codegenOperation = super.fromOperation(path, httpMethod, operation, servers);
-        codegenOperation.allParams.stream().filter(p -> p.isDate || p.isDateTime).findFirst()
+        codegenOperation.allParams.stream()
+                .filter(p -> p.isDate || p.isDateTime)
+                .findFirst()
                 .ifPresent(p -> codegenOperation.imports.add(DATE_TIME_FORMAT));
         return super.fromOperation(path, httpMethod, operation, servers);
     }
@@ -218,35 +220,36 @@ public class SpringGenerator extends AbstractJavaCodegen implements BeanValidati
     }
 
     private void doDataTypeAssignment(String returnType, DataTypeAssigner dataTypeAssigner) {
-        final String rt = returnType;
-        if (rt == null) {
+        if (returnType == null) {
             dataTypeAssigner.setReturnType("Void");
-        } else if (rt.startsWith("List") || rt.startsWith("java.util.List")) {
-            final int start = rt.indexOf("<");
-            final int end = rt.lastIndexOf(">");
+        } else if (returnType.startsWith("List") || returnType.startsWith("java.util.List")) {
+            final int start = returnType.indexOf("<");
+            final int end = returnType.lastIndexOf(">");
             if (start > 0 && end > 0) {
-                dataTypeAssigner.setReturnType(rt.substring(start + 1, end).trim());
+                dataTypeAssigner.setReturnType(returnType.substring(start + 1, end).trim());
                 dataTypeAssigner.setReturnContainer("List");
             }
-        } else if (rt.startsWith("Map") || rt.startsWith("java.util.Map")) {
-            final int start = rt.indexOf("<");
-            final int end = rt.lastIndexOf(">");
+        } else if (returnType.startsWith("Map") || returnType.startsWith("java.util.Map")) {
+            final int start = returnType.indexOf("<");
+            final int end = returnType.lastIndexOf(">");
             if (start > 0 && end > 0) {
-                dataTypeAssigner.setReturnType(rt.substring(start + 1, end).split(",", 2)[1].trim());
+                dataTypeAssigner.setReturnType(returnType.substring(start + 1, end).split(",", 2)[1].trim());
                 dataTypeAssigner.setReturnContainer("Map");
             }
-        } else if (rt.startsWith("Set") || rt.startsWith("java.util.Set")) {
-            final int start = rt.indexOf("<");
-            final int end = rt.lastIndexOf(">");
+        } else if (returnType.startsWith("Set") || returnType.startsWith("java.util.Set")) {
+            final int start = returnType.indexOf("<");
+            final int end = returnType.lastIndexOf(">");
             if (start > 0 && end > 0) {
-                dataTypeAssigner.setReturnType(rt.substring(start + 1, end).trim());
+                dataTypeAssigner.setReturnType(returnType.substring(start + 1, end).trim());
                 dataTypeAssigner.setReturnContainer("Set");
             }
         }
     }
 
     private interface DataTypeAssigner {
+
         void setReturnType(String returnType);
+
         void setReturnContainer(String returnContainer);
     }
 }

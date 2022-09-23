@@ -1,3 +1,4 @@
+{{ vendorExtensions.x-constraints }}
 {{#pattern}}{{^isByteArray}}@Pattern(regexp = "{{{pattern}}}") {{/isByteArray}}{{/pattern}}{{!
 minLength && maxLength set
 }}{{#minLength}}{{#maxLength}}@Size(min = {{minLength}}, max = {{maxLength}}) {{/maxLength}}{{/minLength}}{{!

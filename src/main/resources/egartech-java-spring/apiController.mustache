@@ -178,7 +178,7 @@ public class {{classname}}Controller {
         {{/hasParams}}{{#swagger2AnnotationLibrary}}@Parameter(hidden = true){{/swagger2AnnotationLibrary}}{{#springFoxDocumentationProvider}}@ApiIgnore{{/springFoxDocumentationProvider}} final ServerWebExchange exchange{{/reactive}}{{#vendorExtensions.x-spring-paginated}}{{#hasParams}},
         {{/hasParams}}{{#springFoxDocumentationProvider}}@ApiIgnore {{/springFoxDocumentationProvider}}{{#springDocDocumentationProvider}}@ParameterObject {{/springDocDocumentationProvider}}final Pageable pageable{{/vendorExtensions.x-spring-paginated}}){{#unhandledException}} throws Exception{{/unhandledException}}{
         {{#hasProduces}}{{>returnTypes}} value = {{/hasProduces}}{{classVarName}}Service.{{operationId}}({{#allParams}}{{paramName}}{{^-last}}, {{/-last}}{{/allParams}}{{#reactive}}{{#hasParams}}, {{/hasParams}}exchange{{/reactive}}{{#vendorExtensions.x-spring-paginated}}, pageable{{/vendorExtensions.x-spring-paginated}});
-        {{#hasProduces}}return new ResponseEntity<>(value, HttpStatus.OK);{{/hasProduces}}{{^hasProduces}}return ResponseEntity.status(HttpStatus.OK).build();{{/hasProduces}}
+    {{#hasProduces}}return new ResponseEntity<>(value, HttpStatus.valueOf({{#responses}}{{#is2xx}}{{code}}{{/is2xx}}{{/responses}}));{{/hasProduces}}{{^hasProduces}}return ResponseEntity.status(HttpStatus.OK).build();{{/hasProduces}}
     }
     {{/operation}}
     }
